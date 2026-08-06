@@ -105,3 +105,24 @@ export function getDebtors(customers) {
     .filter(c => c.balanceOwed > 0)
     .sort((a, b) => b.balanceOwed - a.balanceOwed);
 }
+
+export function getDailyRevenue(sales, products, today, days = 14) {
+  const productMap = Object.fromEntries(products.map(p => [p.id, p]));
+  const buckets = {};
+
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * DAY);
+    const key = d.toISOString().slice(0, 10);
+    buckets[key] = { date: key, label: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), revenue: 0 };
+  }
+
+  sales.forEach(s => {
+    const key = s.date.toISOString().slice(0, 10);
+    if (buckets[key]) {
+      const p = productMap[s.productId];
+      if (p) buckets[key].revenue += p.sellPrice * s.qty;
+    }
+  });
+
+  return Object.values(buckets);
+}
