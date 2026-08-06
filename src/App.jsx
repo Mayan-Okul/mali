@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { products, sales, expenses, customers, TODAY } from './data/seedData';
 import {
   getReorderAlerts,
@@ -5,6 +6,7 @@ import {
   getProfitTrend,
   getDebtors,
 } from './lib/insights';
+import { fetchAIInsights } from './lib/aiClient';
 import InsightCard from './components/InsightCard';
 
 function formatKES(amount) {
@@ -23,6 +25,14 @@ function SectionCard({ title, accent, children }) {
   );
 }
 
+function AIBadge() {
+  return (
+    <span className="text-[10px] uppercase tracking-wide bg-white/60 text-emerald-700 px-1.5 py-0.5 rounded ml-2">
+      ✨ AI
+    </span>
+  );
+}
+
 function App() {
   const reorderAlerts = getReorderAlerts(products);
   const slowMovers = getSlowMovingProducts(products, sales, TODAY);
@@ -31,6 +41,45 @@ function App() {
 
   const totalOwed = debtors.reduce((sum, c) => sum + c.balanceOwed, 0);
   const profitDropped = profitTrend.change < 0;
+
+  const [aiInsights, setAiInsights] = useState(null); // null until AI text arrives
+  const [aiLoading, setAiLoading] = useState(true);
+
+  useEffect(() => {
+    const metrics = {
+      profit: {
+        thisWeek: profitTrend.thisWeekProfit,
+        lastWeek: profitTrend.lastWeekProfit,
+        change: profitTrend.change,
+        likelyCause: profitTrend.cause,
+      },
+      reorders: reorderAlerts.map(r => ({
+        product: r.product,
+        stock: r.stock,
+        reorderLevel: r.reorderLevel,
+      })),
+      slowMovers: slowMovers.map(s => ({ product: s.product, unitsSold: s.unitsSold })),
+      debtors: debtors.map(d => ({ name: d.name, amountOwed: d.balanceOwed })),
+      totalOwed,
+    };
+
+    let cancelled = false;
+    fetchAIInsights(metrics).then(result => {
+      if (!cancelled && result) setAiInsights(result);
+      if (!cancelled) setAiLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function reorderMessage(item) {
+    const aiMatch = aiInsights?.reorderInsights?.find(r => r.product === item.product);
+    return aiMatch ? aiMatch.message : `Only ${item.stock} left in stock (reorder at ${item.reorderLevel}).`;
+  }
+
+  const insightCount = reorderAlerts.length + (profitDropped ? 1 : 0) + (debtors.length ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -42,7 +91,12 @@ function App() {
             </div>
             <span className="font-semibold text-slate-800 text-lg">Mali</span>
           </div>
-          <span className="text-xs text-slate-400">Mama Nia's Duka · Demo</span>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-semibold">
+              N
+            </div>
+            <span className="text-sm text-slate-600 font-medium">Nia's Duka</span>
+          </div>
         </div>
       </header>
 
@@ -59,8 +113,11 @@ function App() {
           <div className="flex items-center gap-2 mb-4">
             <h2 className="font-semibold text-emerald-800">AI Insights</h2>
             <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-              {reorderAlerts.length + (profitDropped ? 1 : 0) + (debtors.length ? 1 : 0)} things to know
+              {insightCount} things to know
             </span>
+            {aiLoading && (
+              <span className="text-xs text-emerald-600 animate-pulse">thinking…</span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -68,12 +125,13 @@ function App() {
               <InsightCard
                 icon="📉"
                 severity="critical"
-                title="Profit dropped this week"
+                title={<>Profit dropped this week{aiInsights?.profitInsight && <AIBadge />}</>}
                 description={
+                  aiInsights?.profitInsight ||
                   `Down ${formatKES(profitTrend.change)} vs last week ` +
-                  `(${formatKES(profitTrend.lastWeekProfit)} → ` +
-                  `${profitTrend.thisWeekProfit < 0 ? '-' : ''}${formatKES(profitTrend.thisWeekProfit)}). ` +
-                  (profitTrend.cause || '')
+                    `(${formatKES(profitTrend.lastWeekProfit)} → ` +
+                    `${profitTrend.thisWeekProfit < 0 ? '-' : ''}${formatKES(profitTrend.thisWeekProfit)}). ` +
+                    (profitTrend.cause || '')
                 }
               />
             )}
@@ -83,8 +141,13 @@ function App() {
                 key={item.id}
                 icon="📦"
                 severity={item.severity === 'critical' ? 'critical' : 'warning'}
-                title={`Reorder ${item.product}`}
-                description={`Only ${item.stock} left in stock (reorder at ${item.reorderLevel}).`}
+                title={
+                  <>
+                    Reorder {item.product}
+                    {aiInsights?.reorderInsights?.some(r => r.product === item.product) && <AIBadge />}
+                  </>
+                }
+                description={reorderMessage(item)}
               />
             ))}
 
@@ -92,8 +155,11 @@ function App() {
               <InsightCard
                 icon="💸"
                 severity="warning"
-                title="Customers owe you money"
-                description={`${debtors.length} customers owe a total of ${formatKES(totalOwed)}. Top: ${debtors[0].name} (${formatKES(debtors[0].balanceOwed)}).`}
+                title={<>Customers owe you money{aiInsights?.debtorInsight && <AIBadge />}</>}
+                description={
+                  aiInsights?.debtorInsight ||
+                  `${debtors.length} customers owe a total of ${formatKES(totalOwed)}. Top: ${debtors[0].name} (${formatKES(debtors[0].balanceOwed)}).`
+                }
               />
             )}
 
@@ -101,8 +167,11 @@ function App() {
               <InsightCard
                 icon="🐢"
                 severity="info"
-                title="Slow-moving products"
-                description={`${slowMovers.map(s => s.product).join(', ')} barely sold in the last 7 days.`}
+                title={<>Slow-moving products{aiInsights?.slowMoverInsight && <AIBadge />}</>}
+                description={
+                  aiInsights?.slowMoverInsight ||
+                  `${slowMovers.map(s => s.product).join(', ')} barely sold in the last 7 days.`
+                }
               />
             )}
           </div>
