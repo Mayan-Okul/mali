@@ -22,6 +22,20 @@ function Field({ icon: Icon, ...props }) {
     </div>
   );
 }
+const ERRORS = [
+  ['invalid login', 'Wrong email or password. Please try again.'],
+  ['already registered', 'This email already has an account. Try signing in instead.'],
+  ['at least 6 characters', 'Your password must be at least 6 characters.'],
+  ['not confirmed', 'Please confirm your email first. Check your inbox.'],
+  ['rate limit', 'Too many attempts. Please wait a few minutes and try again.'],
+  ['fetch', "Can't connect. Check your internet and try again."],
+];
+
+function friendlyError(message) {
+  const text = String(message || '').toLowerCase();
+  const match = ERRORS.find(([phrase]) => text.includes(phrase));
+  return match ? match[1] : 'Something went wrong. Please try again.';
+}
 
 function AuthPage() {
   const { signIn, signUp } = useAuth();
@@ -43,7 +57,7 @@ function AuthPage() {
         : await signUp(email, password, shopName);
 
     setLoading(false);
-    if (authError) setError(authError.message);
+    if (authError) setError(friendlyError(authError.message));
   }
 
   return (
