@@ -2,10 +2,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-canvas: #F6F5F9;
-  --color-ink: #1C1B29;
-  --color-muted: #6B6879;
-  --color-primary: #2FB9A3;
+  --color-canvas: #F8FAFC;
+  --color-ink: #0F172A;
+  --color-muted: #64748B;
+  --color-primary: #059669;
   --color-sales: #16A874;
   --color-inventory: #E8871E;
   --color-customers: #2E7DD1;
