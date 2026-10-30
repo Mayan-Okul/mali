@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShoppingBag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useShopData } from '../lib/useShopData';
+import { rememberShopName } from '../lib/lastShop';
 import Sidebar from '../components/dashboard/Sidebar';
 import TopBar from '../components/dashboard/TopBar';
 import KpiCards from '../components/dashboard/KpiCards';
@@ -43,6 +44,12 @@ function DashboardView({ data }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const shopName = data?.shopName || 'My Shop';
+
+  // Remember this browser's shop name so the login page can greet it back.
+  useEffect(() => {
+    if (data?.shopName) rememberShopName(data.shopName);
+  }, [data]);
+
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',

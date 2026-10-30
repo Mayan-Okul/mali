@@ -14,7 +14,7 @@ export default function RecentTransactions({ sales, products, customers }) {
             <thead>
               <tr className="text-[11px] uppercase tracking-wider text-muted">
                 <th className="text-left font-semibold px-5 py-2.5">Item</th>
-                <th className="text-left font-semibold px-2 py-2.5">Customer</th>
+                <th className="text-left font-semibold px-2 py-2.5 hidden sm:table-cell">Customer</th>
                 <th className="text-left font-semibold px-2 py-2.5 hidden sm:table-cell">Time</th>
                 <th className="text-right font-semibold px-2 py-2.5">Qty</th>
                 <th className="text-right font-semibold px-5 py-2.5">Total</th>
@@ -24,7 +24,7 @@ export default function RecentTransactions({ sales, products, customers }) {
               {rows.map(r => (
                 <tr key={r.id}>
                   <td className="px-5 py-3 font-medium text-ink max-w-[130px] truncate">{r.item}</td>
-                  <td className="px-2 py-3 text-ink/80 max-w-[110px] truncate">
+                  <td className="px-2 py-3 text-ink/80 max-w-[110px] truncate hidden sm:table-cell">
                     {r.customer}
                     {r.onDeni && (
                       <span className="ml-1.5 align-middle text-[10px] font-bold uppercase bg-inventory/10 text-inventory px-1.5 py-0.5 rounded">

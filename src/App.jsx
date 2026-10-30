@@ -3,7 +3,7 @@ import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
 
 function App() {
-  const { session, loading } = useAuth();
+  const { session, loading, recovery, endRecovery } = useAuth();
 
   if (loading) {
     return (
@@ -11,6 +11,10 @@ function App() {
         Loading…
       </div>
     );
+  }
+
+  if (recovery) {
+    return <AuthPage recoveryMode onRecoveryDone={endRecovery} />;
   }
 
   return session ? <Dashboard /> : <AuthPage />;
