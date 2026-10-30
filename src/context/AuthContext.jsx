@@ -6,6 +6,7 @@ const AuthContext = createContext(undefined);
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -13,8 +14,9 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true);
     });
 
     return () => listener.subscription.unsubscribe();
@@ -24,6 +26,11 @@ export function AuthProvider({ children }) {
     session,
     user: session?.user ?? null,
     loading,
+    recovery,
+    endRecovery: () => setRecovery(false),
+    resetPassword: email =>
+      supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin }),
+    updatePassword: password => supabase.auth.updateUser({ password }),
     signUp: (email, password, shopName) =>
       supabase.auth.signUp({
         email,
