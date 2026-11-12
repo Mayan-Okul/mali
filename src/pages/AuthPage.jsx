@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { ArrowRight, Check, Lock, Mail, Store } from 'lucide-react';
+import { ArrowRight, Check, Lock, Mail, Store, UserX } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { readLastShop, rememberShopName } from '../lib/lastShop';
+import { readLastShop, readLastSignIn, rememberShopName, rememberSignInTime, clearLastShop } from '../lib/lastShop';
 
 const FEATURES = [
   'Know what to reorder',
@@ -49,7 +49,7 @@ function friendlyError(message) {
 
 function AuthPage({ recoveryMode = false, onRecoveryDone }) {
   const { signIn, signUp, resetPassword, updatePassword } = useAuth();
-  const [mode, setMode] = useState(recoveryMode ? 'reset' : 'login'); // 'login' | 'signup' | 'reset'
+  const [mode, setMode] = useState(recoveryMode ? 'reset' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [shopName, setShopName] = useState('');
@@ -57,6 +57,33 @@ function AuthPage({ recoveryMode = false, onRecoveryDone }) {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [lastShop, setLastShop] = useState(readLastShop);
+  const [lastSignIn, setLastSignIn] = useState(readLastSignIn);
+
+  const isReturning = lastShop && mode === 'login' && !recoveryMode;
+
+  function formatLastSignIn(ts) {
+    if (!ts) return null;
+    try {
+      return new Date(ts).toLocaleString(undefined, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  function handleDifferentAccount() {
+    clearLastShop();
+    setLastShop('');
+    setLastSignIn(null);
+    setEmail('');
+    setError('');
+    setNotice('');
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -88,7 +115,9 @@ function AuthPage({ recoveryMode = false, onRecoveryDone }) {
       mode === 'signup' ? shopName : data?.user?.user_metadata?.shop_name;
     if (name) {
       rememberShopName(name);
+      rememberSignInTime();
       setLastShop(name);
+      setLastSignIn(Date.now());
     }
   }
 
@@ -123,52 +152,80 @@ function AuthPage({ recoveryMode = false, onRecoveryDone }) {
         </div>
 
         <div className="relative mt-10 lg:mt-auto lg:mb-auto">
-          <h1 className="text-2xl lg:text-[30px] font-bold leading-tight tracking-[-0.02em]">
-            {lastShop ? `Karibu tena, ${lastShop}!` : 'Run your duka smarter'}
-          </h1>
-          <p className="text-[15px] leading-relaxed text-emerald-100 mt-3 max-w-[440px]">
-            {lastShop
-              ? "Sign in to open your counter, record customer deni, and track today's inventory."
-              : 'Everything your duka does, in one place.'}
-          </p>
-
-          <ul className="mt-8 space-y-4 hidden lg:block">
-            {FEATURES.map(feature => (
-              <li key={feature} className="flex items-center gap-3 text-sm font-medium">
-                <span className="w-7 h-7 rounded-full bg-white/15 border border-white/25 flex items-center justify-center shrink-0">
-                  <Check size={14} strokeWidth={3} />
-                </span>
-                {feature}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="relative mt-10 lg:mt-12 hidden sm:block">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            What Mali tracks
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-            {TRACKED.map(([label, note]) => (
-              <div
-                key={label}
-                className="rounded-xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-md"
+          {isReturning ? (
+            <>
+              <h1 className="text-2xl lg:text-[30px] font-bold leading-tight tracking-[-0.02em]">
+                Karibu tena, {lastShop}!
+              </h1>
+              <p className="text-[15px] leading-relaxed text-emerald-100 mt-3 max-w-[440px]">
+                Sign in to open your counter, record customer deni, and track today's inventory.
+              </p>
+              {formatLastSignIn(lastSignIn) && (
+                <p className="text-[14px] text-emerald-200 mt-4">
+                  Last signed in: {formatLastSignIn(lastSignIn)}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleDifferentAccount}
+                className="mt-6 flex items-center gap-1.5 text-sm font-semibold text-emerald-100 hover:text-white underline underline-offset-2"
               >
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-200">
-                  {label}
-                </div>
-                <div className="text-sm font-bold leading-snug mt-1.5">{note}</div>
-              </div>
-            ))}
-          </div>
+                <UserX size={14} strokeWidth={2.5} />
+                Not {lastShop}? Use a different account
+              </button>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl lg:text-[30px] font-bold leading-tight tracking-[-0.02em]">
+                {lastShop ? `Karibu tena, ${lastShop}!` : 'Run your duka smarter'}
+              </h1>
+              <p className="text-[15px] leading-relaxed text-emerald-100 mt-3 max-w-[440px]">
+                {lastShop
+                  ? "Sign in to open your counter, record customer deni, and track today's inventory."
+                  : 'Everything your duka does, in one place.'}
+              </p>
 
-          <div className="flex items-center gap-2 pt-8 mt-8 border-t border-white/10 text-[13px] text-emerald-200">
-            <Store size={16} />
-            Built in Kisumu for Kenyan dukas
-          </div>
+              <ul className="mt-8 space-y-4 hidden lg:block">
+                {FEATURES.map(feature => (
+                  <li key={feature} className="flex items-center gap-3 text-sm font-medium">
+                    <span className="w-7 h-7 rounded-full bg-white/15 border border-white/25 flex items-center justify-center shrink-0">
+                      <Check size={14} strokeWidth={3} />
+                    </span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
+
+        {!isReturning && (
+          <div className="relative mt-10 lg:mt-12 hidden sm:block">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              What Mali tracks
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+              {TRACKED.map(([label, note]) => (
+                <div
+                  key={label}
+                  className="rounded-xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-md"
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-200">
+                    {label}
+                  </div>
+                  <div className="text-sm font-bold leading-snug mt-1.5">{note}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 pt-8 mt-8 border-t border-white/10 text-[13px] text-emerald-200">
+              <Store size={16} />
+              Built in Kisumu for Kenyan dukas
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-center px-4 py-8 sm:py-10 lg:py-8">
