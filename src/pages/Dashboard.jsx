@@ -11,6 +11,7 @@ import HourlySalesChart from '../components/dashboard/HourlySalesChart';
 import DeniLedger from '../components/dashboard/DeniLedger';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
 import LowStockWatchlist from '../components/dashboard/LowStockWatchlist';
+import ProductsPage from './Productspage'; 
 import { Skeleton } from '../components/dashboard/ui';
 
 function LoadingBlocks() {
@@ -39,9 +40,10 @@ function LoadingBlocks() {
   );
 }
 
-function DashboardView({ data }) {
+function DashboardView({ data, error, loading }) {
   const { signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard'); // <-- Track active navigation tab
 
   const shopName = data?.shopName || 'My Shop';
 
@@ -58,65 +60,86 @@ function DashboardView({ data }) {
 
   return (
     <div className="min-h-screen bg-canvas">
-      <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} signOut={signOut} />
+      {/* Pass activeTab and setActiveTab to Sidebar */}
+      <Sidebar 
+        activeTab={activeTab} 
+        onSelectTab={setActiveTab} 
+        open={menuOpen} 
+        onClose={() => setMenuOpen(false)} 
+        signOut={signOut} 
+      />
 
       <div className="lg:pl-[260px]">
         <TopBar shopName={shopName} onMenu={() => setMenuOpen(true)} />
 
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <div className="mb-5">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-ink font-display tracking-tight">
-              Habari, {shopName} 👋
-            </h1>
-            <p className="text-sm text-muted mt-1">{today}</p>
-          </div>
-
-          {data === null ? (
-            <LoadingBlocks />
-          ) : data.products.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-                <ShoppingBag size={22} strokeWidth={2.2} />
+          
+          {/* Render Dashboard View */}
+          {activeTab === 'dashboard' && (
+            <>
+              <div className="mb-5">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-ink font-display tracking-tight">
+                  Habari, {shopName} 👋
+                </h1>
+                <p className="text-sm text-muted mt-1">{today}</p>
               </div>
-              <h2 className="font-display font-extrabold text-ink mt-4">Your shop is set up</h2>
-              <p className="text-sm text-muted mt-1">
-                Add your first products, sales and expenses to start seeing insights here.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-5">
-              <KpiCards
-                products={data.products}
-                customers={data.customers}
-                sales={data.sales}
-              />
 
-              <AiInsights
-                products={data.products}
-                sales={data.sales}
-                expenses={data.expenses}
-                customers={data.customers}
-              />
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2">
-                  <HourlySalesChart sales={data.sales} products={data.products} />
+              {loading ? (
+                <LoadingBlocks />
+              ) : data === null ? (
+                <LoadingBlocks />
+              ) : data.products.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-10 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                    <ShoppingBag size={22} strokeWidth={2.2} />
+                  </div>
+                  <h2 className="font-display font-extrabold text-ink mt-4">Your shop is set up</h2>
+                  <p className="text-sm text-muted mt-1">
+                    Add your first products, sales and expenses to start seeing insights here.
+                  </p>
                 </div>
-                <DeniLedger customers={data.customers} />
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2">
-                  <RecentTransactions
-                    sales={data.sales}
+              ) : (
+                <div className="flex flex-col gap-5">
+                  <KpiCards
                     products={data.products}
                     customers={data.customers}
+                    sales={data.sales}
                   />
+
+                  <AiInsights
+                    products={data.products}
+                    sales={data.sales}
+                    expenses={data.expenses}
+                    customers={data.customers}
+                  />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div className="lg:col-span-2">
+                      <HourlySalesChart sales={data.sales} products={data.products} />
+                    </div>
+                    <DeniLedger customers={data.customers} />
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div className="lg:col-span-2">
+                      <RecentTransactions
+                        sales={data.sales}
+                        products={data.products}
+                        customers={data.customers}
+                      />
+                    </div>
+                    <LowStockWatchlist products={data.products} />
+                  </div>
                 </div>
-                <LowStockWatchlist products={data.products} />
-              </div>
-            </div>
+              )}
+            </>
           )}
+
+          {/* Render Inventory & Stock Products Page */}
+          {activeTab === 'inventory' && (
+            <ProductsPage data={data} error={error} loading={loading} />
+          )}
+
         </main>
       </div>
     </div>
@@ -125,6 +148,7 @@ function DashboardView({ data }) {
 
 export default function Dashboard() {
   const { data, error } = useShopData();
+  const loading = !data && !error;
 
   if (error) {
     return (
@@ -137,5 +161,5 @@ export default function Dashboard() {
     );
   }
 
-  return <DashboardView data={data} />;
+  return <DashboardView data={data} error={error} loading={loading} />;
 }
