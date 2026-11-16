@@ -47,6 +47,13 @@ function friendlyError(message) {
   return match ? match[1] : 'Something went wrong. Please try again.';
 }
 
+function getGreeting(hour = new Date().getHours()) {
+  if (hour >= 5 && hour < 12) return 'Habari za asubuhi';
+  if (hour >= 12 && hour < 16) return 'Habari za mchana';
+  if (hour >= 16 && hour < 21) return 'Habari za jioni';
+  return 'Habari za usiku';
+}
+
 function AuthPage({ recoveryMode = false, onRecoveryDone }) {
   const { signIn, signUp, resetPassword, updatePassword } = useAuth();
   const [mode, setMode] = useState(recoveryMode ? 'reset' : 'login');
@@ -110,14 +117,14 @@ function AuthPage({ recoveryMode = false, onRecoveryDone }) {
       return;
     }
 
-    // Remember this browser's last shop name for the welcome-back headline.
+    rememberSignInTime();
+    setLastSignIn(Date.now());
+
     const name =
       mode === 'signup' ? shopName : data?.user?.user_metadata?.shop_name;
     if (name) {
       rememberShopName(name);
-      rememberSignInTime();
       setLastShop(name);
-      setLastSignIn(Date.now());
     }
   }
 
@@ -155,10 +162,10 @@ function AuthPage({ recoveryMode = false, onRecoveryDone }) {
           {isReturning ? (
             <>
               <h1 className="text-2xl lg:text-[30px] font-bold leading-tight tracking-[-0.02em]">
-                Karibu tena, {lastShop}!
+                {getGreeting()}, {lastShop}!
               </h1>
               <p className="text-[15px] leading-relaxed text-emerald-100 mt-3 max-w-[440px]">
-                Sign in to open your counter, record customer deni, and track today's inventory.
+                Karibu tena. Sign in to open your counter, record customer deni, and track today's inventory.
               </p>
               {formatLastSignIn(lastSignIn) && (
                 <p className="text-[14px] text-emerald-200 mt-4">
@@ -177,12 +184,10 @@ function AuthPage({ recoveryMode = false, onRecoveryDone }) {
           ) : (
             <>
               <h1 className="text-2xl lg:text-[30px] font-bold leading-tight tracking-[-0.02em]">
-                {lastShop ? `Karibu tena, ${lastShop}!` : 'Run your duka smarter'}
+                Run your duka smarter
               </h1>
               <p className="text-[15px] leading-relaxed text-emerald-100 mt-3 max-w-[440px]">
-                {lastShop
-                  ? "Sign in to open your counter, record customer deni, and track today's inventory."
-                  : 'Everything your duka does, in one place.'}
+                Everything your duka does, in one place.
               </p>
 
               <ul className="mt-8 space-y-4 hidden lg:block">
@@ -294,6 +299,7 @@ function AuthPage({ recoveryMode = false, onRecoveryDone }) {
                   value={shopName}
                   onChange={e => setShopName(e.target.value)}
                   placeholder="Your shop name"
+                  autoComplete="organization"
                 />
               </div>
             )}
@@ -310,6 +316,7 @@ function AuthPage({ recoveryMode = false, onRecoveryDone }) {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
+                  autoComplete="email"
                 />
               </div>
             )}
