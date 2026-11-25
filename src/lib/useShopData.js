@@ -1,16 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 
 export function useShopData() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [tick, setTick] = useState(0);
+
+  const reload = useCallback(() => setTick(t => t + 1), []);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       const [sh, p, c, s, e] = await Promise.all([
-        supabase.from('shops').select('name').limit(1),
-        supabase.from('products').select('*'),
+        supabase.from('shops').select('id, name').limit(1),
+        supabase.from('products').select('*').order('name'),
         supabase.from('customers').select('*'),
         supabase.from('sales').select('*'),
         supabase.from('expenses').select('*'),
@@ -19,6 +22,7 @@ export function useShopData() {
       if (cancelled) return;
       if (err) return setError(err.message);
       setData({
+        shopId: sh.data?.[0]?.id || null,
         shopName: sh.data?.[0]?.name || 'My Shop',
         products: p.data.map(r => ({ id: r.id, name: r.name, category: r.category, costPrice: Number(r.cost_price), sellPrice: Number(r.sell_price), stock: r.stock, reorderLevel: r.reorder_level })),
         customers: c.data.map(r => ({ id: r.id, name: r.name, phone: r.phone, balanceOwed: Number(r.balance_owed) })),
@@ -28,7 +32,7 @@ export function useShopData() {
     }
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [tick]);
 
-  return { data, error };
+  return { data, error, reload };
 }
