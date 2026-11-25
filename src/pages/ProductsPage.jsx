@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { Boxes, AlertTriangle, Search, Plus } from 'lucide-react';
+import { Boxes, AlertTriangle, Search, Plus, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import ProductForm from '../components/products/ProductForm';
+import DeleteDialog from '../components/products/DeleteDialog';
 
 export default function ProductsPage({ data, error, loading, shopId, onChanged }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [formOpen, setFormOpen] = useState(false);
+  const [formProduct, setFormProduct] = useState(undefined);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [deleting, setDeleting] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   if (loading) {
     return (
@@ -37,31 +41,65 @@ export default function ProductsPage({ data, error, loading, shopId, onChanged }
     return matchesSearch && matchesCat;
   });
 
-  function openForm() {
+  function openForm(product) {
     setSaveError('');
-    setFormOpen(true);
+    setFormProduct(product);
   }
 
   function closeForm() {
-    setFormOpen(false);
+    setFormProduct(undefined);
     setSaveError('');
   }
 
-  async function addProduct(values) {
+  async function saveProduct(values) {
     if (!shopId) {
       setSaveError('Your shop is still loading. Try again in a moment.');
       return;
     }
     setSaving(true);
     setSaveError('');
-    const { error: insertError } = await supabase.from('products').insert({ shop_id: shopId, ...values });
+    const query = formProduct
+      ? supabase.from('products').update(values).eq('id', formProduct.id).select()
+      : supabase.from('products').insert({ shop_id: shopId, ...values }).select();
+    const { data: saved, error: saveErr } = await query;
     setSaving(false);
-    if (insertError) {
-      console.error(insertError);
+    if (saveErr || !saved?.length) {
+      console.error(saveErr || 'No row was saved');
       setSaveError('Could not save the product. Check your connection and try again.');
       return;
     }
-    setFormOpen(false);
+    setFormProduct(undefined);
+    onChanged?.();
+  }
+
+  function askDelete(product) {
+    setDeleteError('');
+    setDeleting(product);
+  }
+
+  async function deleteProduct() {
+    setDeleteBusy(true);
+    setDeleteError('');
+    const { data: removed, error: delErr } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', deleting.id)
+      .select();
+    setDeleteBusy(false);
+    if (delErr) {
+      console.error(delErr);
+      setDeleteError(
+        delErr.code === '23503'
+          ? `${deleting.name} has sales history, so it can't be deleted. Set its stock to 0 instead.`
+          : 'Could not delete the product. Check your connection and try again.'
+      );
+      return;
+    }
+    if (!removed?.length) {
+      setDeleteError('Could not delete the product.');
+      return;
+    }
+    setDeleting(null);
     onChanged?.();
   }
 
@@ -74,7 +112,7 @@ export default function ProductsPage({ data, error, loading, shopId, onChanged }
         </div>
         <button
           type="button"
-          onClick={openForm}
+          onClick={() => openForm(null)}
           className="inline-flex items-center justify-center gap-2 bg-primary text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           <Plus size={18} />
@@ -138,6 +176,7 @@ export default function ProductsPage({ data, error, loading, shopId, onChanged }
                   <th className="py-3.5 px-4 text-right">Sell Price</th>
                   <th className="py-3.5 px-4 text-right">Stock</th>
                   <th className="py-3.5 px-6 text-center">Status</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 text-sm">
@@ -168,6 +207,26 @@ export default function ProductsPage({ data, error, loading, shopId, onChanged }
                           </span>
                         )}
                       </td>
+                      <td className="py-4 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => openForm(product)}
+                          aria-label={`Edit ${product.name}`}
+                          className="inline-flex items-center gap-1.5 min-h-9 px-3 rounded-xl text-xs font-semibold text-ink hover:bg-canvas"
+                        >
+                          <Pencil size={14} />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => askDelete(product)}
+                          aria-label={`Delete ${product.name}`}
+                          className="inline-flex items-center gap-1.5 min-h-9 px-3 rounded-xl text-xs font-semibold text-expenses hover:bg-expenses/10"
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -177,13 +236,25 @@ export default function ProductsPage({ data, error, loading, shopId, onChanged }
         )}
       </div>
 
-      {formOpen && (
+      {formProduct !== undefined && (
         <ProductForm
+          key={formProduct?.id || 'new'}
+          product={formProduct}
           categories={categoryList}
           saving={saving}
           serverError={saveError}
-          onSubmit={addProduct}
+          onSubmit={saveProduct}
           onClose={closeForm}
+        />
+      )}
+
+      {deleting && (
+        <DeleteDialog
+          product={deleting}
+          busy={deleteBusy}
+          error={deleteError}
+          onConfirm={deleteProduct}
+          onCancel={() => setDeleting(null)}
         />
       )}
     </div>
