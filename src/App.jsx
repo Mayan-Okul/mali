@@ -1,3 +1,4 @@
+import { BrowserRouter } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
@@ -17,7 +18,7 @@ function App() {
     return <AuthPage recoveryMode onRecoveryDone={endRecovery} />;
   }
 
-  return session ? <Dashboard /> : <AuthPage />;
+  return <BrowserRouter>{session ? <Dashboard /> : <AuthPage />}</BrowserRouter>;
 }
 
 export default App;

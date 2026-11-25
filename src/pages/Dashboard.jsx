@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useShopData } from '../lib/useShopData';
@@ -11,7 +12,7 @@ import HourlySalesChart from '../components/dashboard/HourlySalesChart';
 import DeniLedger from '../components/dashboard/DeniLedger';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
 import LowStockWatchlist from '../components/dashboard/LowStockWatchlist';
-import ProductsPage from './Productspage'; 
+import ProductsPage from './ProductsPage';
 import { Skeleton } from '../components/dashboard/ui';
 
 function LoadingBlocks() {
@@ -43,7 +44,11 @@ function LoadingBlocks() {
 function DashboardView({ data, error, loading }) {
   const { signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard'); // <-- Track active navigation tab
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const activeTab = pathname === '/products' ? 'inventory' : 'dashboard';
+  const selectTab = id => navigate(id === 'inventory' ? '/products' : '/');
 
   const shopName = data?.shopName || 'My Shop';
 
@@ -51,6 +56,10 @@ function DashboardView({ data, error, loading }) {
   useEffect(() => {
     if (data?.shopName) rememberShopName(data.shopName);
   }, [data]);
+
+  if (pathname !== '/' && pathname !== '/products') {
+    return <Navigate to="/" replace />;
+  }
 
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -60,21 +69,18 @@ function DashboardView({ data, error, loading }) {
 
   return (
     <div className="min-h-screen bg-canvas">
-      {/* Pass activeTab and setActiveTab to Sidebar */}
-      <Sidebar 
-        activeTab={activeTab} 
-        onSelectTab={setActiveTab} 
-        open={menuOpen} 
-        onClose={() => setMenuOpen(false)} 
-        signOut={signOut} 
+      <Sidebar
+        activeTab={activeTab}
+        onSelectTab={selectTab}
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        signOut={signOut}
       />
 
       <div className="lg:pl-[260px]">
         <TopBar shopName={shopName} onMenu={() => setMenuOpen(true)} />
 
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          
-          {/* Render Dashboard View */}
           {activeTab === 'dashboard' && (
             <>
               <div className="mb-5">
@@ -135,11 +141,9 @@ function DashboardView({ data, error, loading }) {
             </>
           )}
 
-          {/* Render Inventory & Stock Products Page */}
           {activeTab === 'inventory' && (
             <ProductsPage data={data} error={error} loading={loading} />
           )}
-
         </main>
       </div>
     </div>
