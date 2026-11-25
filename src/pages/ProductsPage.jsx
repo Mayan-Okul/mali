@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { Boxes, AlertTriangle, Search, Plus } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
+import ProductForm from '../components/products/ProductForm';
 
-export default function ProductsPage({ data, error, loading }) {
+export default function ProductsPage({ data, error, loading, shopId, onChanged }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [formOpen, setFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   if (loading) {
     return (
@@ -23,18 +28,45 @@ export default function ProductsPage({ data, error, loading }) {
   }
 
   const products = data?.products || [];
-  const categories = ['All', ...new Set(products.map(p => p.category))];
+  const categoryList = [...new Set(products.map(p => p.category).filter(Boolean))];
+  const categories = ['All', ...categoryList];
 
-  // Filter products based on search term and category
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCat = selectedCategory === 'All' || p.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
 
+  function openForm() {
+    setSaveError('');
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setSaveError('');
+  }
+
+  async function addProduct(values) {
+    if (!shopId) {
+      setSaveError('Your shop is still loading. Try again in a moment.');
+      return;
+    }
+    setSaving(true);
+    setSaveError('');
+    const { error: insertError } = await supabase.from('products').insert({ shop_id: shopId, ...values });
+    setSaving(false);
+    if (insertError) {
+      console.error(insertError);
+      setSaveError('Could not save the product. Check your connection and try again.');
+      return;
+    }
+    setFormOpen(false);
+    onChanged?.();
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-ink font-display tracking-tight">Inventory & Stock</h1>
@@ -42,7 +74,7 @@ export default function ProductsPage({ data, error, loading }) {
         </div>
         <button
           type="button"
-          onClick={() => alert('Add Product modal coming in a future issue!')}
+          onClick={openForm}
           className="inline-flex items-center justify-center gap-2 bg-primary text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           <Plus size={18} />
@@ -50,7 +82,6 @@ export default function ProductsPage({ data, error, loading }) {
         </button>
       </div>
 
-      {/* Filters & Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-black/5 shadow-sm">
         <div className="relative w-full sm:w-80">
           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
@@ -63,7 +94,6 @@ export default function ProductsPage({ data, error, loading }) {
           />
         </div>
 
-        {/* Category Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0">
           {categories.map(cat => (
             <button
@@ -82,15 +112,20 @@ export default function ProductsPage({ data, error, loading }) {
         </div>
       </div>
 
-      {/* Products Table */}
       <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
         {filteredProducts.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <div className="w-12 h-12 bg-canvas rounded-full flex items-center justify-center mx-auto text-muted">
               <Boxes size={24} />
             </div>
-            <p className="text-sm font-semibold text-ink">No products found</p>
-            <p className="text-xs text-muted">Try adjusting your search or category filter.</p>
+            <p className="text-sm font-semibold text-ink">
+              {products.length === 0 ? 'No products yet' : 'No products found'}
+            </p>
+            <p className="text-xs text-muted">
+              {products.length === 0
+                ? 'Click "Add Product" to add your first item.'
+                : 'Try adjusting your search or category filter.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -141,6 +176,16 @@ export default function ProductsPage({ data, error, loading }) {
           </div>
         )}
       </div>
+
+      {formOpen && (
+        <ProductForm
+          categories={categoryList}
+          saving={saving}
+          serverError={saveError}
+          onSubmit={addProduct}
+          onClose={closeForm}
+        />
+      )}
     </div>
   );
 }

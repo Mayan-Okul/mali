@@ -41,7 +41,7 @@ function LoadingBlocks() {
   );
 }
 
-function DashboardView({ data, error, loading }) {
+function DashboardView({ data, error, loading, reload }) {
   const { signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
@@ -142,7 +142,7 @@ function DashboardView({ data, error, loading }) {
           )}
 
           {activeTab === 'inventory' && (
-            <ProductsPage data={data} error={error} loading={loading} />
+            <ProductsPage data={data} error={error} loading={loading} shopId={data?.shopId} onChanged={reload} />
           )}
         </main>
       </div>
@@ -151,7 +151,7 @@ function DashboardView({ data, error, loading }) {
 }
 
 export default function Dashboard() {
-  const { data, error } = useShopData();
+  const { data, error, reload } = useShopData();
   const loading = !data && !error;
 
   if (error) {
@@ -165,5 +165,5 @@ export default function Dashboard() {
     );
   }
 
-  return <DashboardView data={data} error={error} loading={loading} />;
+  return <DashboardView data={data} error={error} loading={loading} reload={reload} />;
 }
