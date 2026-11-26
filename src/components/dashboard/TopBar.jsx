@@ -1,7 +1,7 @@
 import { HandCoins, Menu, Plus } from 'lucide-react';
 import { Soon } from './ui';
 
-export default function TopBar({ shopName, onMenu }) {
+export default function TopBar({ shopName, onMenu, onNewSale }) {
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-black/5">
       <div className="h-16 px-4 sm:px-6 flex items-center gap-3">
@@ -21,13 +21,12 @@ export default function TopBar({ shopName, onMenu }) {
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           <button
             type="button"
-            disabled
+            onClick={onNewSale}
             aria-label="New Sale"
-            className="min-h-11 px-3 sm:px-4 rounded-xl bg-primary text-white text-sm font-semibold flex items-center gap-1.5 opacity-70"
+            className="min-h-11 px-3 sm:px-4 rounded-xl bg-primary text-white text-sm font-semibold flex items-center gap-1.5 hover:opacity-90"
           >
             <Plus size={16} strokeWidth={2.5} />
             <span className="hidden sm:inline">New Sale</span>
-            <Soon onDark />
           </button>
           <button
             type="button"

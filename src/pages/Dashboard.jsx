@@ -13,6 +13,7 @@ import DeniLedger from '../components/dashboard/DeniLedger';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
 import LowStockWatchlist from '../components/dashboard/LowStockWatchlist';
 import ProductsPage from './ProductsPage';
+import SellPage from './SellPage';
 import { Skeleton } from '../components/dashboard/ui';
 
 function LoadingBlocks() {
@@ -47,8 +48,9 @@ function DashboardView({ data, error, loading, reload }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
-  const activeTab = pathname === '/products' ? 'inventory' : 'dashboard';
-  const selectTab = id => navigate(id === 'inventory' ? '/products' : '/');
+  const TAB_PATHS = { dashboard: '/', pos: '/sell', inventory: '/products' };
+  const activeTab = Object.keys(TAB_PATHS).find(id => TAB_PATHS[id] === pathname) || null;
+  const selectTab = id => navigate(TAB_PATHS[id] || '/');
 
   const shopName = data?.shopName || 'My Shop';
 
@@ -57,7 +59,7 @@ function DashboardView({ data, error, loading, reload }) {
     if (data?.shopName) rememberShopName(data.shopName);
   }, [data]);
 
-  if (pathname !== '/' && pathname !== '/products') {
+  if (!activeTab) {
     return <Navigate to="/" replace />;
   }
 
@@ -78,7 +80,7 @@ function DashboardView({ data, error, loading, reload }) {
       />
 
       <div className="lg:pl-[260px]">
-        <TopBar shopName={shopName} onMenu={() => setMenuOpen(true)} />
+        <TopBar shopName={shopName} onMenu={() => setMenuOpen(true)} onNewSale={() => navigate('/sell')} />
 
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {activeTab === 'dashboard' && (
@@ -139,6 +141,10 @@ function DashboardView({ data, error, loading, reload }) {
                 </div>
               )}
             </>
+          )}
+
+          {activeTab === 'pos' && (
+            <SellPage data={data} error={error} loading={loading} onChanged={reload} />
           )}
 
           {activeTab === 'inventory' && (

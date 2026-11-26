@@ -21,6 +21,8 @@ const NAV = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
+const ENABLED = ['dashboard', 'pos', 'inventory'];
+
 function Nav({ activeTab, onSelectTab, signOut, onNavigate }) {
   return (
     <div className="flex flex-col h-full">
@@ -37,8 +39,7 @@ function Nav({ activeTab, onSelectTab, signOut, onNavigate }) {
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV.map(({ id, label, icon: Icon }) => {
           const active = activeTab === id;
-          // Enabled tabs: Dashboard ('dashboard') and Inventory & Stock ('inventory')
-          const isEnabled = id === 'dashboard' || id === 'inventory';
+          const isEnabled = ENABLED.includes(id);
 
           return (
             <button
